@@ -1,5 +1,3 @@
-package goobar.dev.remoteconfig.slacknotification
-
 /**
  * Holds a diff between two Parameters or Conditions
  */

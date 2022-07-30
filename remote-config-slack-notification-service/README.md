@@ -5,7 +5,7 @@ This sample demonstrates how to monitor changes in Firebase Remote Config using 
 ```
 gcloud functions deploy remote-config-slack-notification-service \
 --entry-point RemoteConfigSlackNotificationService \
---runtime java11 \
+--runtime java17 \
 --trigger-event google.firebase.remoteconfig.update \
 --set-env-vars GOOGLE_CLOUD_PROJECT=<target gcp proejct>,SLACK_TOKEN=<Slack Bot Token>,SLACK_CHANNEL_ID=<Id for target Slack channel>
 ```

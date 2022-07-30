@@ -1,5 +1,3 @@
-package goobar.dev.remoteconfig.slacknotification
-
 import com.google.cloud.functions.Context
 import com.google.cloud.functions.RawBackgroundFunction
 import com.google.firebase.FirebaseApp
@@ -15,7 +13,7 @@ import java.util.logging.Logger
  * about changes to Firebase Remote Config values.
  *
  */
-class RemoteConfigMonitorService : RawBackgroundFunction {
+class RemoteConfigSlackNotificationService : RawBackgroundFunction {
 
     private val projectId: String = System.getenv("GOOGLE_CLOUD_PROJECT")
     private val slackChannelId: String = System.getenv("SLACK_CHANNEL_ID")
@@ -24,7 +22,7 @@ class RemoteConfigMonitorService : RawBackgroundFunction {
 
 
     private val slack = SlackClient(token = slackToken, channelId = slackChannelId)
-    private val logger: Logger = Logger.getLogger(RemoteConfigMonitorService::class.java.name)
+    private val logger: Logger = Logger.getLogger(RemoteConfigSlackNotificationService::class.java.name)
 
     private val gson: Gson = Gson()
 

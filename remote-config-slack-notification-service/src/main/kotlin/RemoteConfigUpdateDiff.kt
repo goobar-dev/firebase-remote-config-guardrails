@@ -1,5 +1,3 @@
-package goobar.dev.remoteconfig.slacknotification
-
 import com.google.firebase.remoteconfig.Condition
 import com.google.firebase.remoteconfig.Parameter
 import com.google.firebase.remoteconfig.Template

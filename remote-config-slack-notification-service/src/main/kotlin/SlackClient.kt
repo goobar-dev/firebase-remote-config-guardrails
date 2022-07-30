@@ -1,5 +1,3 @@
-package goobar.dev.remoteconfig.slacknotification
-
 import com.slack.api.Slack
 import com.slack.api.methods.MethodsClient
 import com.slack.api.methods.response.chat.ChatPostMessageResponse

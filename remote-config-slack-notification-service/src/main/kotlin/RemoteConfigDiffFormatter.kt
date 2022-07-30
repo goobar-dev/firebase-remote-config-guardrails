@@ -1,5 +1,3 @@
-package goobar.dev.remoteconfig.slacknotification
-
 import com.github.difflib.text.DiffRowGenerator
 import com.google.gson.Gson
 

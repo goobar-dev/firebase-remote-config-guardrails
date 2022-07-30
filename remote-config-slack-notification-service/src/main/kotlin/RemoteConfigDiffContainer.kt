@@ -1,5 +1,3 @@
-package goobar.dev.remoteconfig.slacknotification
-
 /**
  * A container for a set of changes to Parameters or Conditions
  */

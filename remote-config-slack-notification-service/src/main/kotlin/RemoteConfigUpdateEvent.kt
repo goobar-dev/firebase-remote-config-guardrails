@@ -1,5 +1,3 @@
-package goobar.dev.remoteconfig.slacknotification
-
 import com.google.gson.annotations.SerializedName
 
 /**
