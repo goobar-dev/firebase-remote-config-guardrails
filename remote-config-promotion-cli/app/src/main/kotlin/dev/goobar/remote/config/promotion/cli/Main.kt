@@ -5,26 +5,60 @@ package dev.goobar.remote.config.promotion.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.multiple
+import com.github.ajalt.clikt.parameters.groups.OptionGroup
+import com.github.ajalt.clikt.parameters.groups.groupChoice
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.prompt
+import com.github.ajalt.clikt.parameters.types.choice
+import com.github.ajalt.clikt.parameters.types.int
+import kotlin.system.exitProcess
+
 // database [OPTIONS] COMMAND [ARGS]...
 
-
-
-class Database: CliktCommand() {
-    override fun run() = Unit
+sealed class ProjectConfig(name: String): OptionGroup(name)
+class FromDev : ProjectConfig("Options for promoting from Dev") {
+    val fromDevTo: String by option(help="Remote Config project to send parameters to")
+        .choice("premise-qa", "premise-prod")
+        .prompt("Select 'to' project id")
 }
 
-class Init: CliktCommand(help="Initialize the database") {
+class FromQA : ProjectConfig("Options for promoting from QA") {
+    val fromQATo: String by option(help="Remote Config project to send parameters to")
+        .choice("premise-prod")
+        .prompt("Select 'to' project id")
+}
+
+class RemoteConfig: CliktCommand() {
+    val from: String by option(help="Remote Config project to take parameters from")
+        .choice("premise-dev", "premise-qa")
+        .prompt("Select 'from' project id")
+
+    val to: String by option(help="Remote Config project to send parameters to")
+        .choice("premise-qa", "premise-prod")
+        .prompt("Select 'to' project id")
+
+    val remoteConfigParameters: List<String> by argument(
+        help = "Remote Config parameters to promote"
+    ).multiple(required = true)
+
     override fun run() {
-        echo("Initialized the database.")
+
+        if (from == to) {
+            echo("Cannot promote parameters within the same project")
+            exitProcess(-1)
+        }
+
+        val msg = buildString {
+            appendLine("Will move the following parameters from $from to $to")
+            remoteConfigParameters.forEach { parameter ->
+                appendLine(" - $parameter")
+            }
+        }
+        echo(msg)
     }
 }
 
-class Drop: CliktCommand(help="Drop the database") {
-    override fun run() {
-        echo("Dropped the database.")
-    }
-}
-
-fun main(args: Array<String>) = Database()
-    .subcommands(Init(), Drop())
-    .main(args)
+fun main(args: Array<String>) = RemoteConfig().main(args)

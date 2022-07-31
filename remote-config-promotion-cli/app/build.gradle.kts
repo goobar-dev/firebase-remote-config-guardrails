@@ -31,5 +31,5 @@ application {
     // Define the main class for the application
     mainClass.set("dev.goobar.remote.config.promotion.cli.MainKt")
 
-    applicationName = "remoteconfigcli"
+    applicationName = "remote-config"
 }
