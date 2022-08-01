@@ -4,53 +4,110 @@
 package dev.goobar.remote.config.promotion.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.multiple
-import com.github.ajalt.clikt.parameters.groups.OptionGroup
-import com.github.ajalt.clikt.parameters.groups.groupChoice
-import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.prompt
 import com.github.ajalt.clikt.parameters.types.choice
-import com.github.ajalt.clikt.parameters.types.int
+import com.google.auth.oauth2.GoogleCredentials
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.Parameter
+import com.google.firebase.remoteconfig.Template
+import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
 
-// database [OPTIONS] COMMAND [ARGS]...
-
-sealed class ProjectConfig(name: String): OptionGroup(name)
-class FromDev : ProjectConfig("Options for promoting from Dev") {
-    val fromDevTo: String by option(help="Remote Config project to send parameters to")
-        .choice("premise-qa", "premise-prod")
-        .prompt("Select 'to' project id")
-}
-
-class FromQA : ProjectConfig("Options for promoting from QA") {
-    val fromQATo: String by option(help="Remote Config project to send parameters to")
-        .choice("premise-prod")
-        .prompt("Select 'to' project id")
-}
-
-class RemoteConfig: CliktCommand() {
-    val from: String by option(help="Remote Config project to take parameters from")
-        .choice("premise-dev", "premise-qa")
+class RemoteConfig : CliktCommand() {
+    /**
+     * The Firebase project that contains the Remote Config parameters
+     * you want to promote
+     */
+    val from: String by option(help = "Remote Config project to take parameters from")
+        .choice("goobar-training-dev")
         .prompt("Select 'from' project id")
 
-    val to: String by option(help="Remote Config project to send parameters to")
-        .choice("premise-qa", "premise-prod")
+    /**
+     * The Firebase project that the Remote Config parameters
+     * will be promoted to
+     */
+    val to: String by option(help = "Remote Config project to send parameters to")
+        .choice("goobar-training")
         .prompt("Select 'to' project id")
 
+    /**
+     * The Remote Config parameters to promote
+     */
     val remoteConfigParameters: List<String> by argument(
         help = "Remote Config parameters to promote"
     ).multiple(required = true)
 
-    override fun run() {
+    override fun run(): Unit = runBlocking {
 
-        if (from == to) {
-            echo("Cannot promote parameters within the same project")
-            exitProcess(-1)
+        printExecutionDetails()
+
+        echo("Loading Remote Config details from $from")
+        // Loads the Firebase project to pull parameters from
+        val currentTemplate = FirebaseRemoteConfig
+            .getInstance(getFirebaseProject(from))
+            .template
+
+        echo("Loading Remote Config details from $to")
+        // Loads the Firebase project to publish parameters to
+        val remoteConfig = FirebaseRemoteConfig
+            .getInstance(getFirebaseProject(to))
+        val toTemplate = remoteConfig.template
+
+        // Builds a map of all specified parameters that actually exist
+        // within the "from" Firebase project
+        val parametersToPromote = loadParametersToPromote(currentTemplate)
+
+        confirmParameterPromotion(parametersToPromote)
+
+        // Adds the located parameters to the current set of values in
+        // the "to" project
+        parametersToPromote.forEach { key, parameter ->
+            toTemplate.parameters[key] = parameter
         }
 
+        echo(" ")
+        echo("Publishing updated values to $to")
+        // publish the updated values
+        remoteConfig.publishTemplate(toTemplate)
+    }
+
+    private fun confirmParameterPromotion(parametersToPromote: MutableMap<String, Parameter>) {
+        echo(" ")
+        if (parametersToPromote.isEmpty()) {
+            echo("None of the specified parameters exist within $from")
+            echo("Will not promote any values")
+            exitProcess(-1)
+        } else if (confirm("${parametersToPromote.size} parameters will be promoted. Continue?") == false) {
+            echo("Will not promote any values")
+            exitProcess(-1)
+        }
+    }
+
+    private fun loadParametersToPromote(currentTemplate: Template): MutableMap<String, Parameter> {
+        echo(" ")
+        val parametersToPromote = mutableMapOf<String, Parameter>()
+        remoteConfigParameters.forEach { parameter ->
+            echo("Loading $parameter from $from")
+            when (val loadedParameter = currentTemplate.parameters[parameter]) {
+                null -> {
+                    echo("$parameter does not exist within $from")
+                }
+                else -> {
+                    echo("Found $parameter within $from")
+                    echo("Staging $parameter to $to")
+                    parametersToPromote[parameter] = loadedParameter
+                }
+            }
+        }
+        return parametersToPromote
+    }
+
+    private fun printExecutionDetails() {
         val msg = buildString {
             appendLine("Will move the following parameters from $from to $to")
             remoteConfigParameters.forEach { parameter ->
@@ -58,7 +115,17 @@ class RemoteConfig: CliktCommand() {
             }
         }
         echo(msg)
+        echo(" ")
     }
+
+    private fun getFirebaseProject(name: String) = FirebaseApp.initializeApp(
+        FirebaseOptions
+            .builder()
+            .setProjectId(name)
+            .setCredentials(GoogleCredentials.getApplicationDefault())
+            .build(),
+        name
+    )
 }
 
 fun main(args: Array<String>) = RemoteConfig().main(args)

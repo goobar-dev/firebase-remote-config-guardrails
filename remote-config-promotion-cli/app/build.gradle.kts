@@ -22,9 +22,14 @@ repositories {
 dependencies {
     // Align versions of all Kotlin components
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1")
 
     // Provides cli framework
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
+
+    implementation("com.google.firebase:firebase-admin:8.1.0")
+
+    implementation("org.slf4j:slf4j-nop:1.7.36")
 }
 
 application {
