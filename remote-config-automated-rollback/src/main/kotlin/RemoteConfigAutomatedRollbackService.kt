@@ -9,9 +9,8 @@ import kotlinx.coroutines.runBlocking
 import java.util.logging.Logger
 
 /**
- * Entry point for Google Cloud Function that notifies Slack
- * about changes to Firebase Remote Config values.
- *
+ * Entry point for Google Cloud Function that runs validation against
+ * updated Remote Config values and rolls back any invalid changes.
  */
 class RemoteConfigAutomatedRollbackService : RawBackgroundFunction {
 
@@ -25,18 +24,22 @@ class RemoteConfigAutomatedRollbackService : RawBackgroundFunction {
 
     override fun accept(json: String, context: Context): Unit = runBlocking {
 
+        // Parse the remoteconfig.update event data
+        // and initialize Firebase
         val event: RemoteConfigUpdateEvent = Gson().fromJson(json, RemoteConfigUpdateEvent::class.java)
-
         val remoteConfig = FirebaseRemoteConfig.getInstance()
         logger.info(event.toString())
 
+        // Load the current version of Remote Config values
         val updatedValues = remoteConfig.getTemplateAtVersion(event.version)
 
+        // Calculate a "valid" / "not valid" state for the updated set of
+        // Remote Config values
         val changesAreValid = updatedValues.parameters.map { (key, parameter) ->
-            val validator = ValidatedParameters.getOrDefault(key, { true })
-            validator(parameter)
+            ValidatedParameters.getOrDefault(key, { true })(parameter)
         }.reduceRight { b, acc -> b && acc }
 
+        // Notify Slack if anything was rolled back
         if (!changesAreValid) {
             remoteConfig.rollback(event.version - 1)
             slack.notify("Invalid Remote Config changes were published.  The changes have been rolled back.")
