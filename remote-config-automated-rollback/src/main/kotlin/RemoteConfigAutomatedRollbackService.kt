@@ -15,42 +15,22 @@ import java.util.logging.Logger
  */
 class RemoteConfigAutomatedRollbackService : RawBackgroundFunction {
 
-    private val projectId: String = System.getenv("GOOGLE_CLOUD_PROJECT")
     private val slackChannelId: String = System.getenv("SLACK_CHANNEL_ID")
     private val slackToken: String = System.getenv("SLACK_TOKEN")
-    private val firebaseProjectUrl: String = "https://console.firebase.google.com/project/${projectId}/config"
-
 
     private val slack = SlackClient(token = slackToken, channelId = slackChannelId)
     private val logger: Logger = Logger.getLogger(RemoteConfigAutomatedRollbackService::class.java.name)
 
-    private val gson: Gson = Gson()
-
-    init {
-        FirebaseApp.initializeApp()
-    }
+    init { FirebaseApp.initializeApp() }
 
     override fun accept(json: String, context: Context): Unit = runBlocking {
 
-        val event: RemoteConfigUpdateEvent = gson.fromJson(json, RemoteConfigUpdateEvent::class.java)
+        val event: RemoteConfigUpdateEvent = Gson().fromJson(json, RemoteConfigUpdateEvent::class.java)
+
         val remoteConfig = FirebaseRemoteConfig.getInstance()
         logger.info(event.toString())
 
-        val newConfig = async(Dispatchers.IO) {
-            remoteConfig.getTemplateAtVersion(event.version)
-        }
-        val previousConfig = async(Dispatchers.IO) {
-            remoteConfig.getTemplateAtVersion(event.version - 1)
-        }
-
-//        val diffCollection = getRemoteConfigDiff(
-//            projectId,
-//            event,
-//            previousConfig.await(),
-//            newConfig.await()
-//        )
-
-        val updatedValues = newConfig.await()
+        val updatedValues = remoteConfig.getTemplateAtVersion(event.version)
 
         val changesAreValid = updatedValues.parameters.map { (key, parameter) ->
             val validator = ValidatedParameters.getOrDefault(key, { true })
