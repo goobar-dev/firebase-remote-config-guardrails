@@ -1,6 +1,12 @@
 # Automated Rollback of Firebase Remote Config Changes
 This sample demonstrates how to monitor changes in Firebase Remote Config using a Google Cloud Function written in Kotlin, and how to automatically rollback changes that are outside of acceptable/expected values.
 
+We can build a map of `key` to `validation function` to run whenever a specified key is updated.
+
+If the validation function of any update returns `false` we roll back the changes.
+
+This system could easily be extended to support any type of validation logic you wish against `Parameters` or `Conditions`.
+
 ## Requirements
 - `gcloud` command line tools installed, and authenticated on your development machine
 - Cloud Functions enabled in target GCP project
